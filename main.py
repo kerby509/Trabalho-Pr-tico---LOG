@@ -48,3 +48,30 @@ def criar_tabelas():
             """)
     print("Tabelas criadas com sucesso.")
     
+    
+    
+# Carrega dados iniciais na tabela memoria a partir do arquivo JSON
+def carregar_dados_iniciais():
+    with open("medado.json", "r") as f:
+        dados = json.load(f)["INITIAL"]
+
+    with conectar() as conn:
+        with conn.cursor() as cursor:
+            for i in range(len(dados["id"])):
+                id_val = dados["id"][i]
+                a_val = dados["A"][i]
+                b_val = dados["B"][i]
+                cursor.execute(
+                    "INSERT INTO memoria (id, A, B) VALUES (%s, %s, %s)",
+                    (id_val, a_val, b_val)
+                )
+        conn.commit()
+    print("Dados iniciais inseridos na tabela memoria.")
+
+
+
+if __name__ == "__main__":
+    criar_tabelas()
+    carregar_dados_iniciais()
+    
+    print("Simule a queda do banco e depois execute novamente apenas aplicar_redo().\n")
