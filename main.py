@@ -67,11 +67,77 @@ def carregar_dados_iniciais():
                 )
         conn.commit()
     print("Dados iniciais inseridos na tabela memoria.")
+    
+    
+    
+# Carrega o log para a tabela log_redo
+def carregar_log():
+    with conectar() as conn:
+        with conn.cursor() as cursor:
+            with open("EntradLog.txt", "r") as f:
+                linhas = [line.strip() for line in f.readlines()]
+
+            for linha in linhas:
+                if "<crash>" in linha:
+                    break
+                elif linha.startswith("<start"):
+                    if "CKPT" in linha:
+                        continue
+                    tid = linha.replace("<start ", "").replace(">", "")
+                    cursor.execute(
+                        "INSERT INTO log_redo (transacao_id, operacao, dados, estado) VALUES (%s, %s, %s, %s)",
+                        (tid, None, None, 'BEGIN')
+                    )
+                elif linha.startswith("<commit"):
+                    tid = linha.replace("<commit ", "").replace(">", "")
+                    cursor.execute(
+                        "INSERT INTO log_redo (transacao_id, operacao, dados, estado) VALUES (%s, %s, %s, %s)",
+                        (tid, None, None, 'COMMIT')
+                    )
+                elif linha.startswith("<T"):  # UPDATE
+                    parts = linha.strip('<>').split(',')
+                    if len(parts) == 5:
+                        tid, rid, attr, old_val, new_val = parts
+                        dados_json = json.dumps({"id": int(rid), attr: int(new_val)})
+                        cursor.execute(
+                            "INSERT INTO log_redo (transacao_id, operacao, dados, estado) VALUES (%s, %s, %s, %s)",
+                            (tid, 'UPDATE', dados_json, 'OPERACAO')
+                        )
+                elif linha.startswith("<I"):  # INSERT
+                    parts = linha.strip('<>').split(',')
+                    if len(parts) == 5:
+                        _, tid, rid, a_val, b_val = parts
+                        dados_json = json.dumps({"id": int(rid), "A": int(a_val), "B": int(b_val)})
+                        cursor.execute(
+                            "INSERT INTO log_redo (transacao_id, operacao, dados, estado) VALUES (%s, %s, %s, %s)",
+                            (tid, 'INSERT', dados_json, 'OPERACAO')
+                        )
+                elif linha.startswith("<D"):  # DELETE
+                    parts = linha.strip('<>').split(',')
+                    if len(parts) == 3:
+                        _, tid, rid = parts
+                        dados_json = json.dumps({"id": int(rid)})
+                        cursor.execute(
+                            "INSERT INTO log_redo (transacao_id, operacao, dados, estado) VALUES (%s, %s, %s, %s)",
+                            (tid, 'DELETE', dados_json, 'OPERACAO')
+                        )
+        conn.commit()
+    print("Log carregado com sucesso na tabela log_redo.")
+
+
+
+
+
+
 
 
 
 if __name__ == "__main__":
     criar_tabelas()
     carregar_dados_iniciais()
+    carregar_log()
     
-    print("Simule a queda do banco e depois execute novamente apenas aplicar_redo().\n")
+    print("Simule a queda do banco e depois execute novamente[teste 1,2] .\n")
+    
+    
+    
