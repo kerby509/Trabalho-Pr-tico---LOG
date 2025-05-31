@@ -123,10 +123,54 @@ def carregar_log():
                         )
         conn.commit()
     print("Log carregado com sucesso na tabela log_redo.")
+    
+    
+# Aplica REDO para restaurar estado após queda
+def aplicar_redo():
+    with conectar() as conn:
+        with conn.cursor() as cursor:
+            try:
+                cursor.execute("SELECT DISTINCT transacao_id FROM log_redo WHERE estado = 'COMMIT'")
+                transacoes_commitadas = [row[0] for row in cursor.fetchall()]
+                print("Transações para REDO:", transacoes_commitadas)
 
+                for tid in transacoes_commitadas:
+                    cursor.execute(
+                        "SELECT operacao, dados FROM log_redo WHERE transacao_id = %s AND estado = 'OPERACAO'",
+                        (tid,)
+                    )
+                    operacoes = cursor.fetchall()
 
+                    for operacao, dados_json in operacoes:
+                        # Verifica se 'dados_json' já é um dict (caso contrário, converta)
+                        if isinstance(dados_json, str):
+                            dados = json.loads(dados_json)  # Converte de string para dict
+                        else:
+                            dados = dados_json  # Se já for dict, não faz nada
 
+                        if operacao == 'UPDATE':
+                            colunas = [f"{k} = %s" for k in dados if k != 'id']
+                            valores = [dados[k] for k in dados if k != 'id']
+                            sql = f"UPDATE memoria SET {', '.join(colunas)} WHERE id = %s"
+                            valores.append(dados["id"])
+                            cursor.execute(sql, valores)
 
+                        elif operacao == 'INSERT':
+                            colunas = ', '.join(dados.keys())
+                            placeholders = ', '.join(['%s'] * len(dados))
+                            valores = list(dados.values())
+                            sql = f"INSERT INTO memoria ({colunas}) VALUES ({placeholders})"
+                            cursor.execute(sql, valores)
+
+                        elif operacao == 'DELETE':
+                            sql = "DELETE FROM memoria WHERE id = %s"
+                            cursor.execute(sql, (dados["id"],))
+                
+                conn.commit()
+                print("REDO concluído.")
+
+            except Exception as e:
+                print("Erro durante a execução do REDO:", e)
 
 
 
@@ -138,6 +182,6 @@ if __name__ == "__main__":
     carregar_log()
     
     print("Simule a queda do banco e depois execute novamente[teste 1,2] .\n")
-    
+    aplicar_redo()
     
     
