@@ -12,14 +12,7 @@ def conectar():
     )
     
     
-    # verifica a coneção 
-    try:
-        conn = conectar()
-        print(" Conexão bem-sucedida com o banco de dados!")
-        conn.close()
-    except psycopg2.Error as e:
-        print("Erro ao conectar:", e)
-
+   
 # 3. Criar tabelas no banco
 
 def criar_tabelas():
@@ -40,10 +33,10 @@ def criar_tabelas():
                 DROP TABLE IF EXISTS log_redo;
                 CREATE TABLE log_redo (
                     id SERIAL PRIMARY KEY,
-                    transacao_id TEXT,   -- Identificador da transação (ex: T1, T2...)
-                    operacao TEXT,       -- Tipo: INSERT, UPDATE, DELETE, ou NULL para BEGIN/COMMIT
-                    dados JSONB,         -- Dados da operação armazenados em JSON
-                    estado TEXT          -- Estado da operação: BEGIN, OPERACAO ou COMMIT
+                    transacao_id TEXT,   
+                    operacao TEXT,       
+                    dados JSONB,        
+                    estado TEXT          
                 );
             """)
     print("Tabelas criadas com sucesso.")
@@ -177,6 +170,15 @@ def aplicar_redo():
 
 
 if __name__ == "__main__":
+    
+    # verifica a coneção 
+    try:
+        conn = conectar()
+        print(" Conexão bem-sucedida com o banco de dados!")
+        conn.close()
+    except psycopg2.Error as e:
+        print("Erro ao conectar:", e)
+
     criar_tabelas()
     carregar_dados_iniciais()
     carregar_log()
